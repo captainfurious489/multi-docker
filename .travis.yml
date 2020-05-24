@@ -1,0 +1,29 @@
+sudo: required
+services:
+  - docker
+
+before_install:
+  - docker build -t stefano/react-test -f ./client/Dockerfile.dev ./client
+
+script:
+  - docker run -e CI=true stefano/react-test npm test -- --coverage
+
+after_success:
+  - docker build -t stefano/multi-client ./client
+  - docker build -t stefano/multi-nginx ./nginx
+  - docker build -t stefano/multi-server ./server
+  - docker build -t stefano/multi-worker ./worker
+  # Log in to the docker CLI
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+  # Take those images and push them to docker hub
+  - docker push stefano/multi-client
+  - docker push stefano/multi-nginx
+  - docker push stefano/multi-server
+  - docker push stefano/multi-worker
+
+deploy:
+  provider: heroku
+  api_key: "113da859-4b3f-4234-b058-e9615f5422d1"
+  app: "docker-multi489"
+  on:
+    branch: master
